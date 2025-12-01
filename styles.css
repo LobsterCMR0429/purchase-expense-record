@@ -1,0 +1,455 @@
+/* ---------------------------------------------------- */
+/* 1. 全局和字体设置 */
+/* ---------------------------------------------------- */
+body {
+    font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    /* 底部增加内边距，为固定的总金额栏留出空间 */
+    padding-bottom: 70px; 
+    background-color: #eef1f6; 
+    color: #1a1a1a;
+    line-height: 1.6;
+}
+
+/* ---------------------------------------------------- */
+/* 2. 头部和主要容器 */
+/* ---------------------------------------------------- */
+header {
+    background: linear-gradient(90deg, #4285f4, #673ab7); /* Google 蓝和紫的渐变色 */
+    color: white;
+    padding: 25px 0;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+main {
+    max-width: 1300px; 
+    margin: 40px auto;
+    padding: 30px;
+    background-color: transparent;
+}
+
+/* 标题样式 */
+h2 {
+    font-weight: 500;
+    color: #4285f4;
+    padding-bottom: 8px;
+    margin-top: 0;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+}
+
+/* ---------------------------------------------------- */
+/* 3. 卡片式布局 (新增和列表区域) */
+/* ---------------------------------------------------- */
+#add-entry, #record-list {
+    background-color: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+    transition: transform 0.3s ease;
+}
+
+#add-entry:hover, #record-list:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ---------------------------------------------------- */
+/* 4. 表单和输入控件 (新增区域) */
+/* ---------------------------------------------------- */
+
+#purchase-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.form-group {
+    flex: 1 1 calc(33.33% - 20px); 
+    min-width: 200px;
+}
+
+.form-group.full-width {
+    flex: 1 1 100%;
+}
+
+label {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 6px;
+    display: block;
+}
+
+input[type="text"], 
+input[type="date"], 
+input[type="number"], 
+select, 
+textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #c8c8c8;
+    border-radius: 8px; 
+    box-sizing: border-box; 
+    transition: border-color 0.3s, box-shadow 0.3s;
+    background-color: #f7f7f7;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #4285f4;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.3);
+    outline: none;
+    background-color: white;
+}
+
+/* 新增区域 复选框组 */
+.form-group.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 15%; 
+    min-width: 120px;
+}
+.form-group.checkbox-group input[type="checkbox"] {
+    width: auto;
+    margin-top: 5px;
+}
+
+/* 按钮样式 */
+button, #apply-bulk {
+    background-color: #4285f4;
+    color: white;
+    padding: 10px 25px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    transition: background-color 0.3s, box-shadow 0.3s;
+    white-space: nowrap; /* 确保按钮文本不换行 */
+}
+
+button:hover, #apply-bulk:hover {
+    background-color: #3367d6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 针对批量入库/开票按钮的样式，使用更柔和的颜色 */
+.bulk-toggle-button {
+    background-color: #34a853; /* 绿色 */
+    padding: 10px 15px;
+}
+.bulk-toggle-button:hover {
+    background-color: #2e8b57;
+}
+
+#cancel-modal, #cancel-edit {
+    background-color: #757575;
+}
+#cancel-modal:hover, #cancel-edit:hover {
+    background-color: #616161;
+}
+
+
+/* ---------------------------------------------------- */
+/* 5. 筛选和批量操作 (Controls) - 优化布局 */
+/* ---------------------------------------------------- */
+#controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f0f3f8;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+/* 筛选控件组 */
+#filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 0; 
+}
+
+/* 批量操作控件组：允许换行以适应多种按钮 */
+#bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap; 
+    justify-content: flex-end; /* 右对齐 */
+    flex-grow: 0; 
+}
+
+/* 优化筛选下拉菜单的宽度，避免 "所有状态" 过长 */
+#filter-status {
+    width: 120px; 
+    min-width: 120px; 
+    padding: 8px;
+    font-size: 14px;
+}
+
+/* 优化批量更改下拉菜单的宽度 */
+#bulk-status {
+    width: 150px;
+    min-width: 150px;
+    padding: 8px;
+    font-size: 14px;
+}
+
+/* 优化批量操作的文本标签样式，避免拥挤 */
+#bulk-actions .bulk-label {
+    margin: 0;
+    white-space: nowrap; 
+    font-weight: 500;
+    color: #333;
+}
+
+
+/* ---------------------------------------------------- */
+/* 6. 表格样式 */
+/* ---------------------------------------------------- */
+#purchase-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    table-layout: fixed; /* 启用固定表格布局 */
+}
+
+#purchase-table tbody tr:hover {
+    background-color: #e8f0fe;
+    cursor: pointer;
+}
+
+#purchase-table th, 
+#purchase-table td {
+    padding: 14px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eeeeee;
+    word-wrap: break-word; /* 保证备注等长文本能换行 */
+}
+#purchase-table td {
+    white-space: nowrap; /* 默认让单元格内容不换行 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+#purchase-table th {
+    background-color: #4285f4;
+    color: white;
+    font-weight: 500;
+}
+
+#purchase-table tbody tr:nth-child(even) {
+    background-color: #fcfcfc;
+}
+
+/* 调整序号和复选框列的宽度 */
+#purchase-table th:nth-child(1), /* 序号 */
+#purchase-table td:nth-child(1) {
+    width: 50px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#purchase-table th:nth-child(2), /* 复选框 */
+#purchase-table td:nth-child(2) {
+    width: 30px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 订单时间 和 到账日期：确保它们在一行内显示 (日期格式YYYY-MM-DD需要10个字符) */
+#purchase-table th:nth-child(3), /* 订单时间 */
+#purchase-table td:nth-child(3) {
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    white-space: nowrap;
+}
+
+#purchase-table th:nth-child(5), /* 价格 */
+#purchase-table td:nth-child(5) {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+#purchase-table th:nth-child(10), /* 到账日期 */
+#purchase-table td:nth-child(10) {
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    white-space: nowrap;
+}
+
+#purchase-table th:nth-child(4), /* 名称/描述 - 允许占用更多空间 */
+#purchase-table td:nth-child(4) {
+    width: auto;
+    max-width: none;
+    white-space: normal;
+}
+
+#purchase-table th:nth-child(11), /* 备注 - 允许占用更多空间 */
+#purchase-table td:nth-child(11) {
+    white-space: normal;
+}
+
+
+/* ---------------------------------------------------- */
+/* 7. 状态颜色和标记 */
+/* ---------------------------------------------------- */
+
+/* 报账状态 */
+.status-未报账, .status-已提交报账, .status-已到账 {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    text-align: center;
+    font-size: 0.9em;
+}
+.status-未报账 {
+    background-color: #fce8e6; 
+    color: #ea4335;
+}
+.status-已提交报账 {
+    background-color: #fff4e5; 
+    color: #fbbc04;
+}
+.status-已到账 {
+    background-color: #e6f4ea; 
+    color: #34a853;
+}
+
+/* 批量提交提示标记 */
+.status-已提交报账.batch-submitted {
+    background-color: #fbbc04 !important;
+    color: white;
+    border: 2px dashed #3367d6;
+    position: relative;
+}
+.status-已提交报账.batch-submitted::after {
+    content: " (批量)";
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #3367d6;
+}
+
+/* 入库/开票 状态 */
+.status-yes, .status-no {
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    text-align: center;
+}
+.status-yes {
+    background-color: #e6f4ea; 
+    color: #34a853;
+}
+.status-no {
+    background-color: #fce8e6; 
+    color: #ea4335;
+}
+
+/* ---------------------------------------------------- */
+/* 8. 模态框样式 */
+/* ---------------------------------------------------- */
+.modal {
+    display: none; 
+    position: fixed;
+    z-index: 10;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto; 
+    padding: 30px;
+    border-radius: 12px; 
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.edit-form-content {
+    max-width: 650px;
+}
+
+/* 编辑模态框内的表单布局 */
+#edit-purchase-form {
+    display: flex;
+    flex-wrap: wrap; 
+    gap: 15px;
+}
+.form-group-edit {
+    flex: 1 1 calc(50% - 15px); 
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+.form-group-edit.full-width-edit {
+    flex: 1 1 100%;
+}
+
+.form-group-edit input[type="checkbox"] {
+    width: auto;
+    align-self: flex-start;
+    margin-top: 10px;
+}
+
+.form-actions {
+    flex: 1 1 100%;
+    margin-top: 25px;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+/* 总金额显示样式 - 固定底部 */
+#total-summary {
+    position: fixed; /* 固定位置 */
+    bottom: 0;      /* 位于底部 */
+    left: 0;
+    width: 100%;
+    
+    /* 样式与原设计保持一致，但新增固定所需的背景和阴影 */
+    background-color: white; /* 确保背景覆盖内容 */
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1); /* 向上阴影 */
+    
+    padding: 15px 40px; /* 增加左右内边距，使其看起来更宽敞 */
+    text-align: right;
+    font-size: 1.1em;
+    font-weight: 400;
+    border-top: 3px solid #4285f4; /* 蓝色的顶部强调线 */
+    z-index: 9; /* 确保它位于内容上方，低于模态框 */
+    box-sizing: border-box; /* 确保 padding 不会增加宽度 */
+}
+
+#selected-total {
+    color: #34a853; /* 绿色突出显示金额 */
+    font-weight: 700;
+    font-size: 1.2em;
+    margin-left: 10px;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+    color: #757575;
+    border-top: 1px solid #e0e0e0;
+}
