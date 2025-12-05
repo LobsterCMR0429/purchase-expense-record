@@ -1,46 +1,38 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // ====================================================
+    // 0. 初始化与变量声明
+    // ====================================================
     const form = document.getElementById('purchase-form');
-    const tableContainer = document.getElementById('record-list'); // 使用整个容器以便添加卡片列表
+    const tableContainer = document.getElementById('record-list'); 
     const tableBody = document.getElementById('purchase-body');
     const filterSelect = document.getElementById('filter-status');
     const selectAllCheckbox = document.getElementById('select-all');
     const bulkStatusSelect = document.getElementById('bulk-status');
     const applyBulkButton = document.getElementById('apply-bulk');
     const selectedTotalSpan = document.getElementById('selected-total'); 
-    
-    // 新增批量入库/开票按钮
     const applyBulkStockedButton = document.getElementById('apply-bulk-stocked');
     const applyBulkInvoicedButton = document.getElementById('apply-bulk-invoiced');
-
-    // 模态框元素 (批量到账日期选择)
     const modal = document.getElementById('modal');
     const modalDateInput = document.getElementById('modal-arrival-date');
     const confirmModalButton = document.getElementById('confirm-arrival-date');
     const cancelModalButton = document.getElementById('cancel-modal');
-
-    // 编辑模态框相关的变量
     const editModal = document.getElementById('edit-modal');
     const editForm = document.getElementById('edit-purchase-form');
     const cancelEditButton = document.getElementById('cancel-edit');
     const editRecordIndexInput = document.getElementById('edit-record-index');
 
-
-    let records = JSON.parse(localStorage.getItem('purchaseRecords')) || [];
+    // 引入全局的 Firebase 实例
+    const db = window.db; 
+    let records = []; // 数据将从云端加载
     let indicesToUpdate = []; 
 
     // --- 工具函数：检查是否处于移动视图 ---
     function isMobileView() {
-        // 检查 CSS 中 #purchase-table 是否被隐藏（@media query触发）
         const table = document.getElementById('purchase-table');
         if (!table) return false;
         return window.getComputedStyle(table).display === 'none';
     }
 
-    // --- 函数：保存记录到本地存储 ---
-    function saveRecords() {
-        localStorage.setItem('purchaseRecords', JSON.stringify(records));
-    }
-    
     // --- 函数：计算并更新总金额 ---
     function updateTotalSummary() {
         let total = 0;
@@ -49,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
         checkboxes.forEach(cb => {
             if (cb.checked) {
                 const index = parseInt(cb.dataset.index);
-                // 检查索引是否有效，并且价格是数字
                 if (records[index] && !isNaN(records[index].price)) {
                     total += records[index].price;
                 }
@@ -70,36 +61,32 @@ document.addEventListener('DOMContentLoaded', () => {
         cardList.innerHTML = ''; 
 
         dataToRender.forEach((record, displayIndex) => {
+            // 查找原始索引
             const originalIndex = records.findIndex(r => r.id === record.id);
             if (originalIndex === -1) return;
 
             const card = document.createElement('li');
             card.className = 'record-card';
-            card.dataset.index = originalIndex; // 用于点击事件
+            card.dataset.index = originalIndex; 
 
-            // 1. 复选框
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.classList.add('card-checkbox');
             checkbox.dataset.index = originalIndex; 
-            checkbox.addEventListener('change', updateTotalSummary);
+            checkbox.addEventListener('change', updateTotalSummary); 
             
             const checkboxWrapper = document.createElement('div');
             checkboxWrapper.className = 'card-action';
             checkboxWrapper.appendChild(checkbox);
 
-
-            // 2. 名称/描述 (主标题)
             const title = document.createElement('div');
             title.className = 'card-title';
             title.textContent = `${displayIndex + 1}. ${record.name}`;
 
-            // 3. 价格
             const price = document.createElement('div');
             price.className = 'card-price';
             price.textContent = `¥ ${record.price.toFixed(2)}`;
-
-            // 4. 状态和元数据
+            
             const meta = document.createElement('div');
             meta.className = 'card-meta';
             
@@ -130,15 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
             meta.appendChild(applicantDiv);
             meta.appendChild(toggleDiv);
 
-            // 组装卡片
             card.appendChild(checkboxWrapper);
             card.appendChild(title);
             card.appendChild(price);
             card.appendChild(meta);
 
-            // 添加点击事件监听器，用于打开编辑模态框
             card.addEventListener('click', (e) => {
-                // 排除点击复选框时触发编辑
                 if (!e.target.closest('.card-checkbox')) {
                     openEditModal(originalIndex);
                 }
@@ -147,26 +131,21 @@ document.addEventListener('DOMContentLoaded', () => {
             cardList.appendChild(card);
         });
 
-        // 确保表格隐藏，卡片显示 (CSS也会做，但JS确保DOM结构存在)
         document.getElementById('purchase-table').style.display = 'none';
         cardList.style.display = 'block';
-
-        // 确保全选框在移动端取消隐藏，因为它是表格的一部分
         selectAllCheckbox.parentElement.style.display = 'none';
     }
 
 
     // --- 函数：渲染表格 (PC端) ---
     function renderTable(dataToRender) {
-        // 移除卡片列表
         const cardList = document.querySelector('.card-list');
         if (cardList) {
             cardList.remove();
         }
 
-        // 确保表格显示
         document.getElementById('purchase-table').style.display = 'table';
-        selectAllCheckbox.parentElement.style.display = 'block'; // 显示全选框
+        selectAllCheckbox.parentElement.style.display = 'block'; 
 
         tableBody.innerHTML = ''; 
 
@@ -182,11 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             
-            // 1. 序号列
             const indexCell = row.insertCell();
             indexCell.textContent = displayIndex + 1;
 
-            // 2. 复选框列
             const checkboxCell = row.insertCell();
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -195,25 +172,21 @@ document.addEventListener('DOMContentLoaded', () => {
             checkbox.addEventListener('change', updateTotalSummary); 
             checkboxCell.appendChild(checkbox);
 
-            // 订单时间, 名称, 价格, 申请人
             row.insertCell().textContent = record.orderDate;
             row.insertCell().textContent = record.name;
             row.insertCell().textContent = `¥ ${record.price.toFixed(2)}`;
             row.insertCell().textContent = record.applicant; 
 
-            // 入库状态
             const stockedCell = row.insertCell();
             const stockedStatus = record.isStocked ? '是' : '否';
             stockedCell.textContent = stockedStatus;
             stockedCell.classList.add(`status-${record.isStocked ? 'yes' : 'no'}`);
 
-            // 开票状态
             const invoicedCell = row.insertCell();
             const invoicedStatus = record.isInvoiced ? '是' : '否';
             invoicedCell.textContent = invoicedStatus;
             invoicedCell.classList.add(`status-${record.isInvoiced ? 'yes' : 'no'}`);
 
-            // 报账状态
             const statusCell = row.insertCell();
             statusCell.textContent = record.status;
             const statusClass = record.status.replace(/\s/g, ''); 
@@ -223,11 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusCell.classList.add('batch-submitted');
             }
 
-            // 到账日期, 备注
             row.insertCell().textContent = record.arrivalDate || 'N/A';
             row.insertCell().textContent = record.notes || '';
 
-            // 操作列：删除按钮
             const actionCell = row.insertCell();
             const deleteButton = document.createElement('button');
             deleteButton.textContent = '删除';
@@ -244,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function masterRender(dataToRender) {
         if (isMobileView()) {
             renderCardList(dataToRender);
-            // 移动端全选框无效，应设置为未选中，且不参与总计
             selectAllCheckbox.checked = false;
         } else {
             renderTable(dataToRender);
@@ -255,40 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- 函数：处理表单提交（新增记录） ---
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const newRecord = {
-            id: Date.now(), 
-            orderDate: document.getElementById('order-date').value,
-            name: document.getElementById('name').value,
-            price: parseFloat(document.getElementById('price').value),
-            applicant: document.getElementById('applicant').value, 
-            status: document.getElementById('status').value,
-            arrivalDate: document.getElementById('arrival-date').value,
-            notes: document.getElementById('notes').value,
-            isStocked: document.getElementById('is-stocked').checked,
-            isInvoiced: document.getElementById('is-invoiced').checked,
-            isBatchSubmitted: false 
-        };
-
-        records.push(newRecord);
-        saveRecords();
-        filterRecords(); 
-        form.reset(); 
-    });
-
-    // --- 函数：删除记录 ---
-    function deleteRecord(index) {
-        if (confirm('确定要删除这条记录吗？')) {
-            records.splice(index, 1);
-            saveRecords();
-            filterRecords(); 
-        }
-    }
-
-    // --- 函数：筛选和排序记录 ---
+    // --- 核心函数：筛选和排序记录 ---
     function filterRecords() {
         const selectedStatus = filterSelect.value;
         let filteredRecords = records;
@@ -297,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredRecords = records.filter(record => record.status === selectedStatus);
         }
 
-        // 按订单日期升序排序 (小日期在前)
+        // 按订单日期升序排序
         filteredRecords.sort((a, b) => {
             if (a.orderDate < b.orderDate) return -1; 
             if (a.orderDate > b.orderDate) return 1;
@@ -310,11 +247,86 @@ document.addEventListener('DOMContentLoaded', () => {
     // 监听筛选下拉框变化
     filterSelect.addEventListener('change', filterRecords);
 
+    
+    // ====================================================
+    // 1. 替换：从 Firestore 实时加载数据
+    // ====================================================
+
+    function loadRecordsFromFirestore() {
+        // 监听 "purchases" 集合的变化，并按 orderDate 排序
+        db.collection("purchases").orderBy("orderDate", "asc").onSnapshot((snapshot) => {
+            records = []; // 清空现有记录
+            snapshot.forEach((doc) => {
+                // 将 Firestore 文档数据和其ID存入 records 数组
+                records.push({
+                    ...doc.data(),
+                    id: doc.id // 存储 Firestore ID 作为记录的唯一标识符
+                });
+            });
+            
+            // 数据更新后，重新筛选和渲染表格/卡片
+            filterRecords(); 
+            updateTotalSummary();
+        }, (error) => {
+            console.error("监听 Firestore 失败:", error);
+            // 仅在初始加载时提示严重错误
+            if (records.length === 0) {
+                 alert("无法连接到云端数据库。请检查 Firebase 配置和网络连接。");
+            }
+        });
+    }
 
     // ====================================================
-    // --- 编辑模态框功能 ---
+    // 2. 替换：处理表单提交（新增记录）
+    // ====================================================
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
 
-    // 1. 打开编辑模态框并加载数据
+        const newRecord = {
+            orderDate: document.getElementById('order-date').value,
+            name: document.getElementById('name').value,
+            price: parseFloat(document.getElementById('price').value),
+            applicant: document.getElementById('applicant').value, 
+            status: document.getElementById('status').value,
+            arrivalDate: document.getElementById('arrival-date').value,
+            notes: document.getElementById('notes').value,
+            isStocked: document.getElementById('is-stocked').checked,
+            isInvoiced: document.getElementById('is-invoiced').checked,
+            isBatchSubmitted: false 
+        };
+
+        db.collection("purchases").add(newRecord)
+            .then(() => {
+                // onSnapshot 会自动触发渲染
+                form.reset(); 
+            })
+            .catch((error) => {
+                console.error("写入错误: ", error);
+                alert("数据保存失败，请检查 Firebase 配置和安全规则。");
+            });
+    });
+
+    // ====================================================
+    // 3. 替换：删除记录
+    // ====================================================
+    function deleteRecord(index) {
+        const docId = records[index].id; // 使用 Firestore ID
+        if (confirm('确定要删除这条记录吗？')) {
+            db.collection("purchases").doc(docId).delete()
+                .then(() => {
+                    // onSnapshot 会自动触发渲染
+                })
+                .catch((error) => {
+                    console.error("删除失败: ", error);
+                    alert("删除操作失败。");
+                });
+        }
+    }
+
+
+    // ====================================================
+    // 4. 替换：编辑记录的保存逻辑
+    // ====================================================
     function openEditModal(index) {
         const record = records[index];
         
@@ -331,47 +343,50 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('edit-is-invoiced').checked = record.isInvoiced;
 
         editModal.style.display = 'block';
-        // 移动端：将模态框滚动到顶部以确保用户看到表单顶部
         document.body.style.overflow = 'hidden';
     }
-
-    // 2. 取消编辑
+    
     cancelEditButton.addEventListener('click', () => {
         editModal.style.display = 'none';
         editForm.reset();
         document.body.style.overflow = 'auto';
     });
 
-    // 3. 保存编辑
+
     editForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
         const index = parseInt(editRecordIndexInput.value);
         if (isNaN(index) || index < 0 || index >= records.length) return;
 
-        // 更新记录对象
-        records[index].orderDate = document.getElementById('edit-order-date').value; 
-        records[index].name = document.getElementById('edit-name').value;
-        records[index].price = parseFloat(document.getElementById('edit-price').value);
-        records[index].applicant = document.getElementById('edit-applicant').value;
-        records[index].status = document.getElementById('edit-status').value;
-        records[index].arrivalDate = document.getElementById('edit-arrival-date').value;
-        records[index].notes = document.getElementById('edit-notes').value;
-        records[index].isStocked = document.getElementById('edit-is-stocked').checked;
-        records[index].isInvoiced = document.getElementById('edit-is-invoiced').checked;
-        
-        saveRecords();
-        filterRecords(); 
-        editModal.style.display = 'none';
-        editForm.reset();
-        document.body.style.overflow = 'auto';
-        updateTotalSummary(); 
+        const docId = records[index].id; // 使用 Firestore ID
+
+        // 构造要更新的对象
+        const updatedFields = {
+            orderDate: document.getElementById('edit-order-date').value, 
+            name: document.getElementById('edit-name').value,
+            price: parseFloat(document.getElementById('edit-price').value),
+            applicant: document.getElementById('edit-applicant').value,
+            status: document.getElementById('edit-status').value,
+            arrivalDate: document.getElementById('edit-arrival-date').value,
+            notes: document.getElementById('edit-notes').value,
+            isStocked: document.getElementById('edit-is-stocked').checked,
+            isInvoiced: document.getElementById('edit-is-invoiced').checked,
+        };
+
+        db.collection("purchases").doc(docId).update(updatedFields)
+            .then(() => {
+                // onSnapshot 会自动触发渲染
+                editModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            })
+            .catch((error) => {
+                console.error("更新失败: ", error);
+                alert("更新操作失败，请检查网络。");
+            });
     });
 
-    // ====================================================
-    // --- 批量操作逻辑 ---
-
-    // 1. 全选/全不选 逻辑 (同时适用于表格和卡片)
+    // --- 全选/全不选 逻辑 ---
     selectAllCheckbox.addEventListener('change', () => {
         const checkboxes = document.querySelectorAll('.row-checkbox, .card-checkbox');
         checkboxes.forEach(cb => {
@@ -380,13 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotalSummary(); 
     });
 
-    // 2. 更新全选框状态
     function updateSelectAllState() {
-        if (isMobileView()) {
-             // 移动端隐藏全选框，不需要更新其状态
-             return;
-        }
-
+        if (isMobileView()) { return; }
         const checkboxes = document.querySelectorAll('.row-checkbox');
         if (checkboxes.length === 0) {
             selectAllCheckbox.checked = false;
@@ -395,44 +405,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const allChecked = Array.from(checkboxes).every(cb => cb.checked);
         selectAllCheckbox.checked = allChecked;
     }
-    
-    // --- 6. 通用布尔值批量更新函数 (入库/开票) ---
-    function updateRecordsToggle(field, value, actionName) {
-        // 查找所有选中的复选框 (兼容表格和卡片)
-        indicesToUpdate = Array.from(document.querySelectorAll('.row-checkbox:checked, .card-checkbox:checked'))
-                               .map(cb => parseInt(cb.dataset.index));
 
-        if (indicesToUpdate.length === 0) {
+
+    // ====================================================
+    // 5. 替换：批量操作逻辑 (使用 Firestore.update)
+    // ====================================================
+    
+    // --- 通用批量更新函数 ---
+    function updateRecordsToggle(field, value, actionName) {
+        // 获取所有选中的记录的 Firestore ID
+        const docIdsToUpdate = Array.from(document.querySelectorAll('.row-checkbox:checked, .card-checkbox:checked'))
+                               .map(cb => records[parseInt(cb.dataset.index)].id);
+
+        if (docIdsToUpdate.length === 0) {
             return alert('请选择至少一个采购项目进行批量' + actionName + '！');
         }
 
-        if (!confirm(`确定将选中的 ${indicesToUpdate.length} 个项目标记为 "${value ? '已' : '未'}${actionName}" 吗？`)) {
+        if (!confirm(`确定将选中的 ${docIdsToUpdate.length} 个项目标记为 "${value ? '已' : '未'}${actionName}" 吗？`)) {
             return;
         }
 
-        indicesToUpdate.forEach(index => {
-            records[index][field] = value;
+        // 使用 Promise.all 批量更新
+        const updatePromises = docIdsToUpdate.map(docId => {
+            const updateObj = {};
+            updateObj[field] = value;
+            return db.collection("purchases").doc(docId).update(updateObj);
         });
 
-        saveRecords();
-        filterRecords(); 
-        indicesToUpdate = []; 
-        updateTotalSummary(); 
-        alert(`成功将 ${indicesToUpdate.length} 个项目批量标记为 "${value ? '已' : '未'}${actionName}"。`);
+        Promise.all(updatePromises)
+            .then(() => {
+                alert(`成功将 ${docIdsToUpdate.length} 个项目批量标记为 "${value ? '已' : '未'}${actionName}"。`);
+                // onSnapshot 会自动触发渲染
+            })
+            .catch(error => {
+                console.error("批量更新失败:", error);
+                alert("批量操作失败，请重试。");
+            });
     }
 
-    // --- 7. 批量入库事件 ---
+    // --- 批量入库/开票事件 ---
     applyBulkStockedButton.addEventListener('click', () => {
         updateRecordsToggle('isStocked', true, '入库');
     });
-
-    // --- 8. 批量开票事件 ---
     applyBulkInvoicedButton.addEventListener('click', () => {
         updateRecordsToggle('isInvoiced', true, '开票');
     });
-
-
-    // --- 3. 应用报账操作按钮点击事件 ---
+    
+    // --- 应用报账操作按钮点击事件 (触发批量状态更新) ---
     applyBulkButton.addEventListener('click', () => {
         const newStatus = bulkStatusSelect.value;
         if (!newStatus) return alert('请选择要更改的状态！');
@@ -449,12 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 4. 批量到账日期模态框操作
-    cancelModalButton.addEventListener('click', () => {
-        modal.style.display = 'none';
-        modalDateInput.value = '';
-    });
-
+    // 批量到账日期模态框操作
     confirmModalButton.addEventListener('click', () => {
         const arrivalDate = modalDateInput.value;
         if (!arrivalDate) {
@@ -464,41 +478,58 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'none';
         modalDateInput.value = '';
     });
+    cancelModalButton.addEventListener('click', () => {
+        modal.style.display = 'none';
+        modalDateInput.value = '';
+    });
 
-    // 5. 核心报账状态更新函数
+
+    // --- 核心批量状态更新函数 (使用 Firestore 批量更新) ---
     function updateRecordsStatus(newStatus, arrivalDate) {
-        indicesToUpdate.forEach(index => {
-            records[index].status = newStatus;
-            
-            if (newStatus === '已提交报账') {
-                records[index].isBatchSubmitted = true;
-            } else {
-                records[index].isBatchSubmitted = false; 
-            }
+        
+        const updates = indicesToUpdate.map(index => {
+            const record = records[index];
+            const updateObj = {
+                status: newStatus,
+                isBatchSubmitted: (newStatus === '已提交报账')
+            };
             
             if (newStatus === '已到账' && arrivalDate) {
-                records[index].arrivalDate = arrivalDate;
+                updateObj.arrivalDate = arrivalDate;
             } else if (newStatus !== '已到账') {
-                records[index].arrivalDate = ''; 
+                updateObj.arrivalDate = ''; 
             }
+            
+            return { docId: record.id, data: updateObj };
         });
 
-        saveRecords();
-        filterRecords(); 
-        bulkStatusSelect.value = ''; 
-        indicesToUpdate = []; 
-        updateTotalSummary(); 
+        const updatePromises = updates.map(u => {
+            return db.collection("purchases").doc(u.docId).update(u.data);
+        });
+
+        Promise.all(updatePromises)
+            .then(() => {
+                bulkStatusSelect.value = ''; 
+                indicesToUpdate = []; 
+                // onSnapshot 会自动触发渲染
+            })
+            .catch(error => {
+                console.error("批量更新状态失败:", error);
+                alert("批量更新状态失败，请重试。");
+            });
     }
+
+    // ====================================================
+    // 6. 启动应用
     // ====================================================
 
-    // 监听窗口大小变化，重新渲染以适应视图
+    // 监听窗口大小变化
     window.addEventListener('resize', () => {
-        // 延迟渲染以避免在调整大小时频繁触发
         clearTimeout(window.resizeTimer);
         window.resizeTimer = setTimeout(filterRecords, 200); 
     });
 
 
-    // 页面加载时，渲染初始数据
-    filterRecords(); 
+    // 页面加载时，开始从 Firestore 加载数据
+    loadRecordsFromFirestore(); 
 });
