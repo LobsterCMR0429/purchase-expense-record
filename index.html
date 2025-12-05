@@ -81,9 +81,7 @@
                 </div>
 
                 <div id="bulk-actions">
-                    
                     <button id="apply-bulk-stocked" class="bulk-toggle-button">一键入库 (✅)</button>
-                    
                     <button id="apply-bulk-invoiced" class="bulk-toggle-button">一键开票 (🧾)</button>
 
                     <label for="bulk-status" class="bulk-label">批量更改报账状态为:</label>
@@ -193,6 +191,32 @@
     <footer>
         <p>&copy; 采购记录系统</p>
     </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-firestore-compat.js"></script>
+
+    <script>
+      // ⚠️ 粘贴您在 Firebase 控制台获取的实际配置信息，替换占位符
+      const firebaseConfig = {
+        apiKey: "AIzaSyBhm5Zp1y3n4AtHOJlQL9C-huiQjM-ft-Y",
+        authDomain: "purchasetracker-c7d79.firebaseapp.com",
+        projectId: "purchasetracker-c7d79",
+        storageBucket: "purchasetracker-c7d79.firebasestorage.app",
+        messagingSenderId: "472455371278",
+        appId: "1:472455371278:web:2fac59d4d8816b5dd97a5f",
+        measurementId: "G-YQ5K4907E1"
+      };
+
+      // 初始化 Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      
+      // 获取 Firestore 实例
+      const db = app.firestore();
+      
+      // 将 db 变量暴露给全局环境，以便 script.js 使用
+      window.db = db;
+    </script>
 
     <script src="script.js"></script>
 
