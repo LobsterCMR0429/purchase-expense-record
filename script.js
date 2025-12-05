@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('purchase-form');
+    const tableContainer = document.getElementById('record-list'); // 使用整个容器以便添加卡片列表
     const tableBody = document.getElementById('purchase-body');
     const filterSelect = document.getElementById('filter-status');
     const selectAllCheckbox = document.getElementById('select-all');
@@ -27,6 +28,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let records = JSON.parse(localStorage.getItem('purchaseRecords')) || [];
     let indicesToUpdate = []; 
 
+    // --- 工具函数：检查是否处于移动视图 ---
+    function isMobileView() {
+        // 检查 CSS 中 #purchase-table 是否被隐藏（@media query触发）
+        const table = document.getElementById('purchase-table');
+        if (!table) return false;
+        return window.getComputedStyle(table).display === 'none';
+    }
+
     // --- 函数：保存记录到本地存储 ---
     function saveRecords() {
         localStorage.setItem('purchaseRecords', JSON.stringify(records));
@@ -35,40 +44,145 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 函数：计算并更新总金额 ---
     function updateTotalSummary() {
         let total = 0;
-        const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+        const checkboxes = document.querySelectorAll('.row-checkbox, .card-checkbox');
         
         checkboxes.forEach(cb => {
-            const index = parseInt(cb.dataset.index);
-            // 检查索引是否有效，并且价格是数字
-            if (records[index] && !isNaN(records[index].price)) {
-                total += records[index].price;
+            if (cb.checked) {
+                const index = parseInt(cb.dataset.index);
+                // 检查索引是否有效，并且价格是数字
+                if (records[index] && !isNaN(records[index].price)) {
+                    total += records[index].price;
+                }
             }
         });
 
         selectedTotalSpan.textContent = `¥ ${total.toFixed(2)}`;
     }
 
-    // --- 函数：渲染表格 ---
+    // --- 函数：渲染卡片列表 (移动端) ---
+    function renderCardList(dataToRender) {
+        let cardList = document.querySelector('.card-list');
+        if (!cardList) {
+            cardList = document.createElement('ul');
+            cardList.className = 'card-list';
+            tableContainer.appendChild(cardList);
+        }
+        cardList.innerHTML = ''; 
+
+        dataToRender.forEach((record, displayIndex) => {
+            const originalIndex = records.findIndex(r => r.id === record.id);
+            if (originalIndex === -1) return;
+
+            const card = document.createElement('li');
+            card.className = 'record-card';
+            card.dataset.index = originalIndex; // 用于点击事件
+
+            // 1. 复选框
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.classList.add('card-checkbox');
+            checkbox.dataset.index = originalIndex; 
+            checkbox.addEventListener('change', updateTotalSummary);
+            
+            const checkboxWrapper = document.createElement('div');
+            checkboxWrapper.className = 'card-action';
+            checkboxWrapper.appendChild(checkbox);
+
+
+            // 2. 名称/描述 (主标题)
+            const title = document.createElement('div');
+            title.className = 'card-title';
+            title.textContent = `${displayIndex + 1}. ${record.name}`;
+
+            // 3. 价格
+            const price = document.createElement('div');
+            price.className = 'card-price';
+            price.textContent = `¥ ${record.price.toFixed(2)}`;
+
+            // 4. 状态和元数据
+            const meta = document.createElement('div');
+            meta.className = 'card-meta';
+            
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `card-status status-${record.status.replace(/\s/g, '')}`;
+            statusDiv.textContent = `状态: ${record.status}`;
+            if (record.isBatchSubmitted && record.status === '已提交报账') {
+                statusDiv.classList.add('batch-submitted');
+            }
+            
+            const orderDateDiv = document.createElement('div');
+            orderDateDiv.className = 'card-date';
+            orderDateDiv.textContent = `订单: ${record.orderDate}`;
+            
+            const applicantDiv = document.createElement('div');
+            applicantDiv.className = 'card-applicant';
+            applicantDiv.textContent = `申请人: ${record.applicant}`;
+            
+            const toggleDiv = document.createElement('div');
+            toggleDiv.className = 'card-toggle';
+            toggleDiv.innerHTML = `
+                入库: <span class="status-${record.isStocked ? 'yes' : 'no'}">${record.isStocked ? '是' : '否'}</span> |
+                开票: <span class="status-${record.isInvoiced ? 'yes' : 'no'}">${record.isInvoiced ? '是' : '否'}</span>
+            `;
+
+            meta.appendChild(statusDiv);
+            meta.appendChild(orderDateDiv);
+            meta.appendChild(applicantDiv);
+            meta.appendChild(toggleDiv);
+
+            // 组装卡片
+            card.appendChild(checkboxWrapper);
+            card.appendChild(title);
+            card.appendChild(price);
+            card.appendChild(meta);
+
+            // 添加点击事件监听器，用于打开编辑模态框
+            card.addEventListener('click', (e) => {
+                // 排除点击复选框时触发编辑
+                if (!e.target.closest('.card-checkbox')) {
+                    openEditModal(originalIndex);
+                }
+            });
+
+            cardList.appendChild(card);
+        });
+
+        // 确保表格隐藏，卡片显示 (CSS也会做，但JS确保DOM结构存在)
+        document.getElementById('purchase-table').style.display = 'none';
+        cardList.style.display = 'block';
+
+        // 确保全选框在移动端取消隐藏，因为它是表格的一部分
+        selectAllCheckbox.parentElement.style.display = 'none';
+    }
+
+
+    // --- 函数：渲染表格 (PC端) ---
     function renderTable(dataToRender) {
+        // 移除卡片列表
+        const cardList = document.querySelector('.card-list');
+        if (cardList) {
+            cardList.remove();
+        }
+
+        // 确保表格显示
+        document.getElementById('purchase-table').style.display = 'table';
+        selectAllCheckbox.parentElement.style.display = 'block'; // 显示全选框
+
         tableBody.innerHTML = ''; 
 
-        // dataToRender已经是经过筛选和排序的数组
         dataToRender.forEach((record, displayIndex) => {
-            // 找到该记录在原始 records 数组中的真实索引 (用于编辑、删除和批量操作)
             const originalIndex = records.findIndex(r => r.id === record.id);
             if (originalIndex === -1) return;
 
             const row = tableBody.insertRow();
             
-            // 添加点击事件监听器，用于打开编辑模态框
             row.addEventListener('click', (e) => {
-                // 排除点击复选框、删除按钮等操作元素时触发编辑
                 if (!e.target.closest('.row-checkbox') && !e.target.closest('button')) {
                     openEditModal(originalIndex);
                 }
             });
             
-            // 1. 序号列 (基于当前筛选后的显示顺序)
+            // 1. 序号列
             const indexCell = row.insertCell();
             indexCell.textContent = displayIndex + 1;
 
@@ -77,11 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.classList.add('row-checkbox');
-            checkbox.dataset.index = originalIndex; // 存储真实索引
-            
-            // 监听复选框变化，更新总金额
+            checkbox.dataset.index = originalIndex; 
             checkbox.addEventListener('change', updateTotalSummary); 
-
             checkboxCell.appendChild(checkbox);
 
             // 订单时间, 名称, 价格, 申请人
@@ -108,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const statusClass = record.status.replace(/\s/g, ''); 
             statusCell.classList.add(`status-${statusClass}`);
 
-            // 批量提交提示标记
             if (record.isBatchSubmitted && record.status === '已提交报账') {
                 statusCell.classList.add('batch-submitted');
             }
@@ -122,23 +232,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteButton = document.createElement('button');
             deleteButton.textContent = '删除';
             deleteButton.onclick = (e) => {
-                e.stopPropagation(); // 阻止点击删除按钮时触发编辑
+                e.stopPropagation(); 
                 deleteRecord(originalIndex);
             };
             actionCell.appendChild(deleteButton);
         });
+    }
+
+
+    // --- 函数：主渲染逻辑 (根据视图选择渲染方式) ---
+    function masterRender(dataToRender) {
+        if (isMobileView()) {
+            renderCardList(dataToRender);
+            // 移动端全选框无效，应设置为未选中，且不参与总计
+            selectAllCheckbox.checked = false;
+        } else {
+            renderTable(dataToRender);
+        }
         
-        // 更新全选框状态和总金额
         updateSelectAllState();
         updateTotalSummary();
     }
+
 
     // --- 函数：处理表单提交（新增记录） ---
     form.addEventListener('submit', (e) => {
         e.preventDefault();
 
         const newRecord = {
-            id: Date.now(), // 使用时间戳作为唯一ID
+            id: Date.now(), 
             orderDate: document.getElementById('order-date').value,
             name: document.getElementById('name').value,
             price: parseFloat(document.getElementById('price').value),
@@ -153,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         records.push(newRecord);
         saveRecords();
-        filterRecords(); // 重新筛选和排序
+        filterRecords(); 
         form.reset(); 
     });
 
@@ -162,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm('确定要删除这条记录吗？')) {
             records.splice(index, 1);
             saveRecords();
-            filterRecords(); // 重新筛选和排序
+            filterRecords(); 
         }
     }
 
@@ -182,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return 0;
         });
 
-        renderTable(filteredRecords);
+        masterRender(filteredRecords);
     }
     
     // 监听筛选下拉框变化
@@ -209,12 +331,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('edit-is-invoiced').checked = record.isInvoiced;
 
         editModal.style.display = 'block';
+        // 移动端：将模态框滚动到顶部以确保用户看到表单顶部
+        document.body.style.overflow = 'hidden';
     }
 
     // 2. 取消编辑
     cancelEditButton.addEventListener('click', () => {
         editModal.style.display = 'none';
         editForm.reset();
+        document.body.style.overflow = 'auto';
     });
 
     // 3. 保存编辑
@@ -236,26 +361,32 @@ document.addEventListener('DOMContentLoaded', () => {
         records[index].isInvoiced = document.getElementById('edit-is-invoiced').checked;
         
         saveRecords();
-        filterRecords(); // 重新排序，因为订单日期可能已更改
+        filterRecords(); 
         editModal.style.display = 'none';
         editForm.reset();
+        document.body.style.overflow = 'auto';
         updateTotalSummary(); 
     });
 
     // ====================================================
     // --- 批量操作逻辑 ---
 
-    // 1. 全选/全不选 逻辑
+    // 1. 全选/全不选 逻辑 (同时适用于表格和卡片)
     selectAllCheckbox.addEventListener('change', () => {
-        const checkboxes = document.querySelectorAll('.row-checkbox');
+        const checkboxes = document.querySelectorAll('.row-checkbox, .card-checkbox');
         checkboxes.forEach(cb => {
             cb.checked = selectAllCheckbox.checked;
         });
-        updateTotalSummary(); // 更新总和
+        updateTotalSummary(); 
     });
 
     // 2. 更新全选框状态
     function updateSelectAllState() {
+        if (isMobileView()) {
+             // 移动端隐藏全选框，不需要更新其状态
+             return;
+        }
+
         const checkboxes = document.querySelectorAll('.row-checkbox');
         if (checkboxes.length === 0) {
             selectAllCheckbox.checked = false;
@@ -267,7 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 6. 通用布尔值批量更新函数 (入库/开票) ---
     function updateRecordsToggle(field, value, actionName) {
-        indicesToUpdate = Array.from(document.querySelectorAll('.row-checkbox:checked'))
+        // 查找所有选中的复选框 (兼容表格和卡片)
+        indicesToUpdate = Array.from(document.querySelectorAll('.row-checkbox:checked, .card-checkbox:checked'))
                                .map(cb => parseInt(cb.dataset.index));
 
         if (indicesToUpdate.length === 0) {
@@ -291,13 +423,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 7. 批量入库事件 ---
     applyBulkStockedButton.addEventListener('click', () => {
-        // 假设点击是想标记为 "已入库" (true)
         updateRecordsToggle('isStocked', true, '入库');
     });
 
     // --- 8. 批量开票事件 ---
     applyBulkInvoicedButton.addEventListener('click', () => {
-        // 假设点击是想标记为 "已开票" (true)
         updateRecordsToggle('isInvoiced', true, '开票');
     });
 
@@ -307,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newStatus = bulkStatusSelect.value;
         if (!newStatus) return alert('请选择要更改的状态！');
         
-        indicesToUpdate = Array.from(document.querySelectorAll('.row-checkbox:checked'))
+        indicesToUpdate = Array.from(document.querySelectorAll('.row-checkbox:checked, .card-checkbox:checked'))
                                .map(cb => parseInt(cb.dataset.index));
 
         if (indicesToUpdate.length === 0) return alert('请选择至少一个采购项目！');
@@ -354,12 +484,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         saveRecords();
-        filterRecords(); // 重新排序，确保列表更新
+        filterRecords(); 
         bulkStatusSelect.value = ''; 
         indicesToUpdate = []; 
         updateTotalSummary(); 
     }
     // ====================================================
+
+    // 监听窗口大小变化，重新渲染以适应视图
+    window.addEventListener('resize', () => {
+        // 延迟渲染以避免在调整大小时频繁触发
+        clearTimeout(window.resizeTimer);
+        window.resizeTimer = setTimeout(filterRecords, 200); 
+    });
+
 
     // 页面加载时，渲染初始数据
     filterRecords(); 
